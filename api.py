@@ -8,6 +8,7 @@ logger = logging.getLogger("api")
 logger.setLevel(logging.INFO)
 
 class ClientDetails(enum.Enum):
+    ID = "id"
     NAME = "name"
     DEBT = "debt"
     PAY_DATE = "pay_date"
@@ -19,6 +20,7 @@ class AssistantFnc(llm.FunctionContext):
         super().__init__()
         
         self._client_details = {
+            ClientDetails.ID: None,
             ClientDetails.NAME: "",
             ClientDetails.DEBT: "",
             ClientDetails.PAY_DATE: "",
@@ -42,15 +44,38 @@ class AssistantFnc(llm.FunctionContext):
         Returns:
             A string containing the formatted client details
         """
-        result = self.db.get_client()
-        logger.info(f"!@# Client Result: {result}")
-        if result:
-            self._client_details[ClientDetails.NAME] = result[0]
-            self._client_details[ClientDetails.DEBT] = result[1]
-            self._client_details[ClientDetails.PAY_DATE] = result[2]
-            self._client_details[ClientDetails.CALL_STATUS] = result[3]
-
-        return f"The client details are: {self.get_client_str()}"
+        client = self.db.get_client()
+        logger.info(f"!@# Client Result: {client}")
+        if client:
+            self._client_details[ClientDetails.ID] = client.id
+            self._client_details[ClientDetails.NAME] = client.name
+            self._client_details[ClientDetails.DEBT] = client.debt
+            self._client_details[ClientDetails.PAY_DATE] = client.pay_date
+            self._client_details[ClientDetails.CALL_STATUS] = client.call_status
+            return f"The client details are: {self.get_client_str()}"
+        else:
+            return "No client found"
+    
+    @llm.ai_callable(name="mark_call_completed", description="Mark the current client's call status as completed")
+    def mark_call_completed(self):
+        """
+        Updates the current client's call status to 'completed' in the database.
+        
+        Returns:
+            A confirmation message
+        """
+        if self._client_details[ClientDetails.ID]:
+            success = self.db.update_client_status(self._client_details[ClientDetails.ID], "completed")
+            if success:
+                self._client_details[ClientDetails.CALL_STATUS] = "completed"
+                logger.info(f"Client {self._client_details[ClientDetails.ID]} marked as completed")
+                return "Client call status updated to completed successfully"
+            else:
+                logger.error(f"Failed to update client {self._client_details[ClientDetails.ID]} status")
+                return "Failed to update client status"
+        else:
+            logger.error("No client ID available to update status")
+            return "No active client found to update status"
     
     def get_client_details_str(self) -> str:
         logger.info(f"Getting client details")

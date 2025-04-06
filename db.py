@@ -90,9 +90,29 @@ class DB:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                    SELECT name, debt, pay_date, call_status FROM clients WHERE call_status = 'pending'
+                    SELECT id, name, debt, pay_date, call_status FROM clients WHERE call_status = 'pending'
                     """)
-            return cursor.fetchone()
+            result = cursor.fetchone()
+            if result:
+                return Client(
+                    id=result[0],
+                    name=result[1],
+                    debt=result[2],
+                    pay_date=result[3],
+                    call_status=result[4]
+                )
+            return None
+    
+    def update_client_status(self, client_id: int, status: str) -> bool:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                    UPDATE clients 
+                    SET call_status = ? 
+                    WHERE id = ?
+                    """, (status, client_id))
+            conn.commit()
+            return cursor.rowcount > 0
 
 if __name__ == "__main__":
     db = DB()
