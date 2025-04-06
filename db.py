@@ -113,6 +113,27 @@ class DB:
                     """, (status, client_id))
             conn.commit()
             return cursor.rowcount > 0
+            
+    def create_follow_up_reminder(self, client_name: str, debt: int, pay_date: str) -> int:
+        """
+        Creates a new record for a follow-up reminder call with the same debt amount but a new due date.
+        
+        Args:
+            client_name: The name of the client
+            debt: The outstanding debt amount
+            pay_date: The new payment due date
+            
+        Returns:
+            The ID of the newly created record
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                    INSERT INTO clients (name, debt, pay_date, call_status)
+                    VALUES (?, ?, ?, 'pending')
+                    """, (client_name, debt, pay_date))
+            conn.commit()
+            return cursor.lastrowid
 
 if __name__ == "__main__":
     db = DB()

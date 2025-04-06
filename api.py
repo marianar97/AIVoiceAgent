@@ -77,6 +77,32 @@ class AssistantFnc(llm.FunctionContext):
             logger.error("No client ID available to update status")
             return "No active client found to update status"
     
+    @llm.ai_callable(name="create_follow_up_reminder", description="Create a follow-up reminder call with a new due date")
+    def create_follow_up_reminder(self, new_pay_date: str):
+        """
+        Creates a new follow-up reminder call record with the same client information but a new due date.
+        
+        Args:
+            new_pay_date: The new payment due date (e.g., "June 30")
+            
+        Returns:
+            A confirmation message
+        """
+        if not self._client_details[ClientDetails.ID]:
+            logger.error("No active client to create follow-up reminder for")
+            return "Cannot create follow-up reminder: No active client found"
+            
+        client_name = self._client_details[ClientDetails.NAME]
+        debt = self._client_details[ClientDetails.DEBT]
+        
+        try:
+            new_id = self.db.create_follow_up_reminder(client_name, debt, new_pay_date)
+            logger.info(f"Created follow-up reminder for client {client_name} with new due date {new_pay_date}, ID: {new_id}")
+            return f"Follow-up reminder created successfully. We will call {client_name} again before {new_pay_date} about their ${debt} debt."
+        except Exception as e:
+            logger.error(f"Failed to create follow-up reminder: {str(e)}")
+            return f"Failed to schedule follow-up reminder: {str(e)}"
+    
     def get_client_details_str(self) -> str:
         logger.info(f"Getting client details")
         return f"The client details are: {self.get_client_str()}"

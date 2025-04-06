@@ -65,16 +65,10 @@ async def entrypoint(ctx: JobContext):
         handle_query(msg)
         
     def handle_query(msg: llm.ChatMessage):
-        content = msg.content
-        # Check if client confirms identity or says OK
-        if isinstance(content, str) and any(keyword in content.lower() for keyword in ["ok", "yes", "correct", "that's me", "speaking"]):
-            logger.info("Client confirmed identity or acknowledged call, marking as completed")
-            assistant_fnc.mark_call_completed()
-            
         session.conversation.item.create(
             llm.ChatMessage(
                 role="user",
-                content=content
+                content=msg.content
             )
         )
         session.response.create()
