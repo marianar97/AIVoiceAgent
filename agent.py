@@ -10,7 +10,7 @@ from livekit.agents.multimodal import MultimodalAgent
 from livekit.plugins import openai
 from dotenv import load_dotenv
 from api import AssistantFnc
-from prompts import WELCOME_MESSAGE, INSTRUCTIONS, LOOKUP_VIN_MESSAGE
+from prompts import WELCOME_MESSAGE, INSTRUCTIONS
 import os
 import logging
 
@@ -30,11 +30,7 @@ async def entrypoint(ctx: JobContext):
 
     logger.info(f"!@# Client details: {client_details}")
     model = openai.realtime.RealtimeModel(
-        instructions= f"""
-            You are Sarah, a highly efficient and empathetic debt collection assistant. Your responsibilities include:
-                You have the following client details: {client_details}
-                Begin by identifying yourself as Sarah calling from DocBank and make sure you are speaking with the correct client by repeating the client's name."
-            """,
+        instructions=INSTRUCTIONS.format(client_details=client_details),
         voice="shimmer",
         temperature=0.8,
         modalities=["audio", "text"],
@@ -55,19 +51,9 @@ async def entrypoint(ctx: JobContext):
     session.conversation.item.create(
         llm.ChatMessage(
             role="system",
-            content=f"""You are Sarah, a highly efficient and empathetic debt collection assistant. Your responsibilities include:
-                You have the following client details: {client_details}
-                Begin by identifying yourself as Sarah calling from DocBank and make sure you are speaking with the correct client by repeating the client's name."
-            """
+            content=INSTRUCTIONS.format(client_details=client_details)
         )
     )
-    
-    # session.conversation.item.create(
-    #     llm.ChatMessage(
-    #         role="assistant",
-    #         content=WELCOME_MESSAGE
-    #     )
-    # )
 
     session.response.create()
 
@@ -77,15 +63,6 @@ async def entrypoint(ctx: JobContext):
             msg.content = "\n".join("[image]" if isinstance(x, llm.ChatImage) else x for x in msg)
             
         handle_query(msg)
-        
-    # def find_profile(msg: llm.ChatMessage):
-    #     session.conversation.item.create(
-    #         llm.ChatMessage(
-    #             role="system",
-    #             content=LOOKUP_VIN_MESSAGE(msg)
-    #         )
-    #     )
-    #     session.response.create()
         
     def handle_query(msg: llm.ChatMessage):
         session.conversation.item.create(
