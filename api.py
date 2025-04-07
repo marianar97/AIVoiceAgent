@@ -3,6 +3,16 @@ import enum
 from db import DB
 import logging
 from typing import Annotated
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import os
+from email.message import EmailMessage
+import smtplib, ssl
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 logger = logging.getLogger("api")
 logger.setLevel(logging.INFO)
@@ -103,6 +113,59 @@ class AssistantFnc(llm.FunctionContext):
             logger.error(f"Failed to create follow-up reminder: {str(e)}")
             return f"Failed to schedule follow-up reminder: {str(e)}"
     
+    @llm.ai_callable(name="send_email_reminder", description="Send an email reminder to the client")
+    def send_email_reminder(self, email_address: str, reminder_date: str):
+        """
+        Sends an email reminder to the client about their outstanding debt.
+        
+        Args:
+            email_address: The client's email address
+            reminder_date: The reminder date
+            
+        Returns:
+            A confirmation message
+        """
+
+        if not self._client_details[ClientDetails.ID]:
+            logger.error("No active client to send email reminder to")
+            return "Cannot send email reminder: No active client found"
+            
+        client_name = self._client_details[ClientDetails.NAME]
+        debt = self._client_details[ClientDetails.DEBT]
+        pay_date = reminder_date if reminder_date else self._client_details[ClientDetails.PAY_DATE]
+        
+        # Create email content
+        body = f"""
+            Dear {client_name},
+
+            This is a friendly reminder about your outstanding payment of ${debt} due on {pay_date}.
+
+            Please ensure your payment is made before the due date to avoid any late fees or penalties.
+
+            If you have any questions or need to discuss payment options, please contact our customer service at (555) 123-4567.
+
+            Thank you for your attention to this matter.
+
+            Sincerely,
+            DocBank Payment Services
+        """
+        smtp_server = "smtp.gmail.com"
+        port = 465  # For SSL
+        sender_email = os.getenv("EMAIL_ADDRESS")
+        password = os.getenv("EMAIL_PASSWORD")
+
+        try:
+            context = ssl.create_default_context()
+            with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
+                server.login(sender_email, password)
+                server.sendmail(sender_email, email_address, body)
+            logger.info(f"Email sent to {email_address}")
+            return "Email sent successfully"
+        except Exception as e:
+            logger.error(f"Failed to send email: {str(e)}")
+            return f"Failed to send email: {str(e)}"
+
+
     def get_client_details_str(self) -> str:
         logger.info(f"Getting client details")
         return f"The client details are: {self.get_client_str()}"
